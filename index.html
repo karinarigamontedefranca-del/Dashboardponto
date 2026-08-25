@@ -353,15 +353,18 @@ let SETOR_MAP = {};
 let loadedOnce = false;
 let currentTab = 'overview';
 
-/* ============ JSONP LOADERS ============ */
-window.onAttendanceData = onSheetData;
-window.onSetoresData = onSetoresData;
+/* ============ JSONP LOADERS (Google gviz) ============
+   Encadeado: carrega o ponto primeiro; quando termina, carrega os setores.
+   Usa o mesmo mecanismo (google.visualization.Query.setResponse) que já
+   funcionava antes, só trocando o alvo do handler entre as duas etapas.
+================================================================= */
+window.google = { visualization: { Query: { setResponse: null } } };
 
 function attendanceUrl(){
-  return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?gid=${GID}&headers=1&tqx=out:json;responseHandler:onAttendanceData&_=${Date.now()}`;
+  return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&gid=${GID}&headers=1&_=${Date.now()}`;
 }
 function setoresUrl(){
-  return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${encodeURIComponent(SETORES_SHEET_NAME)}&headers=1&tqx=out:json;responseHandler:onSetoresData&_=${Date.now()}`;
+  return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(SETORES_SHEET_NAME)}&headers=1&_=${Date.now()}`;
 }
 function injectScript(id, src, onerror){
   const old = document.getElementById(id);
@@ -372,10 +375,17 @@ function injectScript(id, src, onerror){
   document.body.appendChild(script);
 }
 function loadSheet(){
+  window.google.visualization.Query.setResponse = onSheetData;
   injectScript('gviz-attendance', attendanceUrl(), () => {
     showError('Não foi possível carregar a planilha. Confira se ela está compartilhada como "Qualquer pessoa com o link pode visualizar", ou tente atualizar novamente.');
   });
-  injectScript('gviz-setores', setoresUrl(), () => {});
+}
+function loadSetores(){
+  window.google.visualization.Query.setResponse = onSetoresData;
+  injectScript('gviz-setores', setoresUrl(), () => {
+    SETOR_MAP = {};
+    if(loadedOnce) render();
+  });
 }
 function showError(msg){ const b=document.getElementById('err-banner'); b.style.display='block'; b.textContent=msg; }
 function clearError(){ document.getElementById('err-banner').style.display='none'; }
@@ -446,6 +456,7 @@ function onSheetData(data){
     document.getElementById('last-update').textContent = 'atualizado às ' + new Date().toLocaleTimeString('pt-BR');
     loadedOnce = true;
     render();
+    loadSetores();
   }catch(e){
     console.error(e);
     showError('Erro ao processar os dados da planilha: ' + e.message);
