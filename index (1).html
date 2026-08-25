@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pulso — Dashboard de Ponto</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0E1116;
+    --panel: #161B24;
+    --panel-2: #1C2230;
+    --border: #262E3D;
+    --text: #EDEFF3;
+    --muted: #8891A3;
+    --gold: #F2B84B;
+    --teal: #3FD6C6;
+    --violet: #8B7CF6;
+    --red: #F2545B;
+    --green: #5DD68A;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    padding: 20px;
+    min-height: 100vh;
+  }
+  h1,h2,h3{ font-family: 'Space Grotesk', sans-serif; margin: 0; letter-spacing: -0.01em; }
+  .mono{ font-family: 'JetBrains Mono', monospace; }
+  a{ color: var(--teal); }
+
+  .wrap{ max-width: 1180px; margin: 0 auto; }
+
+  /* HEADER */
+  header.top{
+    display:flex; justify-content:space-between; align-items:flex-start;
+    flex-wrap: wrap; gap: 14px;
+    margin-bottom: 18px;
+  }
+  .brand{ display:flex; align-items:center; gap: 12px; }
+  .brand .dot-clock{
+    width: 34px; height:34px; border-radius:50%;
+    border: 2px solid var(--gold);
+    position: relative; flex-shrink:0;
+  }
+  .brand .dot-clock::before, .brand .dot-clock::after{
+    content:''; position:absolute; background: var(--gold); border-radius: 2px;
+    top:50%; left:50%; transform-origin: 1px 1px;
+  }
+  .brand .dot-clock::before{ width:8px; height:2px; transform: rotate(120deg); }
+  .brand .dot-clock::after{ width:11px; height:2px; transform: rotate(20deg); }
+  .brand h1{ font-size: 22px; }
+  .brand .sub{ color: var(--muted); font-size: 12.5px; margin-top:1px; }
+
+  .live-status{
+    display:flex; align-items:center; gap:10px;
+    background: var(--panel); border:1px solid var(--border);
+    padding: 8px 14px; border-radius: 8px; font-size: 12.5px; color: var(--muted);
+  }
+  .pulse{ width:8px; height:8px; border-radius:50%; background: var(--green); position:relative; flex-shrink:0; }
+  .pulse::after{
+    content:''; position:absolute; inset:-4px; border-radius:50%; border:1px solid var(--green);
+    animation: pulseRing 1.8s ease-out infinite;
+  }
+  @keyframes pulseRing{ 0%{ transform:scale(0.6); opacity: .9;} 100%{ transform:scale(2.2); opacity:0;} }
+  .live-status button{
+    background:none; border:1px solid var(--border); color: var(--text); border-radius:6px;
+    padding:5px 10px; font-size:12px; cursor:pointer; font-family:'Inter',sans-serif;
+  }
+  .live-status button:hover{ border-color: var(--teal); color: var(--teal); }
+  #err-banner{
+    display:none; background: rgba(242,84,91,0.1); border:1px solid var(--red); color:#ffb4b8;
+    padding:12px 16px; border-radius:8px; font-size: 13.5px; margin-bottom:16px; line-height:1.5;
+  }
+
+  /* FILTER BAR */
+  .filters{
+    background: var(--panel); border:1px solid var(--border); border-radius: 10px;
+    padding: 14px 16px; margin-bottom: 20px;
+    display:flex; flex-wrap:wrap; gap: 10px 18px; align-items:center;
+  }
+  .filters .group{ display:flex; align-items:center; gap:6px; }
+  .filters label{ font-size: 11.5px; color: var(--muted); text-transform: uppercase; letter-spacing:.04em; }
+  .chip-row{ display:flex; gap:6px; flex-wrap:wrap; }
+  .chip{
+    background: var(--panel-2); border:1px solid var(--border); color: var(--muted);
+    padding: 6px 12px; border-radius: 20px; font-size: 12.5px; cursor:pointer; user-select:none;
+    transition: all .15s;
+  }
+  .chip:hover{ color: var(--text); border-color:#3a4356; }
+  .chip.active{ background: var(--gold); color:#181206; border-color: var(--gold); font-weight:600; }
+  .filters input[type=date]{
+    background: var(--panel-2); border:1px solid var(--border); color: var(--text);
+    padding: 6px 8px; border-radius:6px; font-size:12.5px; font-family:'JetBrains Mono',monospace;
+  }
+  .filters select{
+    background: var(--panel-2); border:1px solid var(--border); color: var(--text);
+    padding: 6px 8px; border-radius:6px; font-size:12.5px; font-family:'Inter',sans-serif; min-width:140px;
+  }
+  .search-box{ flex:1; min-width:180px; display:flex; align-items:center; gap:6px; }
+  .search-box input{
+    width:100%; background: var(--panel-2); border:1px solid var(--border); color: var(--text);
+    padding: 7px 10px; border-radius:6px; font-size:13px;
+  }
+
+  /* KPI STRIP */
+  .kpis{ display:grid; grid-template-columns: repeat(4,1fr); gap:12px; margin-bottom:20px; }
+  .kpi{ background: var(--panel); border:1px solid var(--border); border-radius:10px; padding:14px 16px; }
+  .kpi .label{ font-size:11.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin-bottom:6px;}
+  .kpi .value{ font-family:'Space Grotesk',sans-serif; font-size:26px; font-weight:600; }
+  .kpi .value.small{ font-size: 16px; line-height:1.4; font-family:'JetBrains Mono',monospace; font-weight:500;}
+  .kpi .value .unit{ font-size:13px; color:var(--muted); font-family:'Inter',sans-serif; font-weight:400; margin-left:3px;}
+
+  /* SECTIONS */
+  section{ margin-bottom: 26px; }
+  .section-head{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:12px; flex-wrap:wrap; gap:8px;}
+  .section-head h2{ font-size:16px; }
+  .section-head .hint{ font-size:12px; color:var(--muted); }
+  .panel{ background: var(--panel); border:1px solid var(--border); border-radius:12px; padding:18px; }
+
+  .grid-2{ display:grid; grid-template-columns: 1.15fr 0.85fr; gap:16px; align-items:start; }
+  @media (max-width: 860px){ .grid-2{ grid-template-columns: 1fr; } .kpis{ grid-template-columns: repeat(2,1fr);} }
+
+  /* RADIAL CLOCK */
+  .clock-wrap{ display:flex; gap:24px; align-items:center; flex-wrap:wrap; justify-content:center; }
+  .clock-legend{ font-size:12.5px; color:var(--muted); display:flex; flex-direction:column; gap:8px; min-width:170px; }
+  .clock-legend .row{ display:flex; justify-content:space-between; gap:10px; }
+  .clock-legend .row b{ color: var(--text); font-family:'JetBrains Mono',monospace; font-weight:600;}
+
+  /* RANKING LIST */
+  .rank-list{ display:flex; flex-direction:column; gap:10px; }
+  .rank-item{ display:grid; grid-template-columns: 26px 1fr 90px; gap:10px; align-items:center; cursor:pointer; }
+  .rank-item .pos{ font-family:'JetBrains Mono',monospace; color:var(--muted); font-size:13px; }
+  .rank-item .name-bar{ }
+  .rank-item .nm{ display:flex; justify-content:space-between; font-size:13.5px; margin-bottom:4px; }
+  .rank-item .nm .setor-tag{ font-size:10.5px; color:var(--muted); background:var(--panel-2); padding:1px 7px; border-radius:10px; margin-left:6px; }
+  .bar-track{ height:7px; background: var(--panel-2); border-radius:4px; overflow:hidden; }
+  .bar-fill{ height:100%; background: linear-gradient(90deg, var(--gold), #d69a2d); border-radius:4px; }
+  .rank-item .time-val{ text-align:right; font-family:'JetBrains Mono',monospace; font-size:13px; }
+  .rank-item:hover .nm{ color: var(--gold); }
+
+  /* SETOR CARDS */
+  .setor-grid{ display:grid; grid-template-columns: repeat(auto-fill, minmax(210px,1fr)); gap:12px; }
+  .setor-card{ background: var(--panel-2); border:1px solid var(--border); border-radius:10px; padding:14px; }
+  .setor-card .nm{ font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:14.5px; margin-bottom:8px; display:flex; align-items:center; gap:8px;}
+  .setor-card .swatch{ width:10px; height:10px; border-radius:3px; }
+  .setor-card .row{ display:flex; justify-content:space-between; font-size:12px; color:var(--muted); margin-top:4px;}
+  .setor-card .row b{ color: var(--text); font-family:'JetBrains Mono',monospace; }
+
+  /* MANAGE SETORES BUTTON/DRAWER */
+  .btn-link{ background:none; border:1px solid var(--border); color: var(--teal); border-radius:6px; padding:6px 12px; font-size:12px; cursor:pointer; font-family:'Inter',sans-serif;}
+  .btn-link:hover{ border-color: var(--teal); background: rgba(63,214,198,0.08); }
+  .drawer-backdrop{ display:none; position:fixed; inset:0; background: rgba(0,0,0,0.55); z-index: 40; }
+  .drawer{
+    position:fixed; top:0; right:0; height:100%; width: min(400px, 92vw);
+    background: var(--panel); border-left:1px solid var(--border); z-index:41;
+    padding: 20px; overflow-y:auto;
+  }
+  .drawer h3{ font-size:15px; margin-bottom:4px; }
+  .drawer .hint{ font-size:12px; color:var(--muted); margin-bottom:16px; }
+  .drawer .setor-row{ display:flex; gap:8px; align-items:center; margin-bottom:8px; }
+  .drawer .setor-row .who{ flex:1; font-size:13px; }
+  .drawer input.setor-input, .drawer select.setor-input{
+    background: var(--panel-2); border:1px solid var(--border); color:var(--text);
+    padding:5px 8px; border-radius:6px; font-size:12.5px; width: 130px;
+  }
+  .drawer-close{ float:right; background:none; border:none; color:var(--muted); font-size:18px; cursor:pointer; }
+
+  /* INDIVIDUAL */
+  .person-select{ margin-bottom: 14px; }
+  .profile-empty{ color:var(--muted); font-size:13.5px; text-align:center; padding: 30px 0; }
+  .profile-stats{ display:grid; grid-template-columns: repeat(4,1fr); gap:10px; margin-bottom:18px; }
+  .profile-stats .s{ background: var(--panel-2); border:1px solid var(--border); border-radius:8px; padding:10px 12px; }
+  .profile-stats .s .l{ font-size:10.5px; color:var(--muted); text-transform:uppercase; }
+  .profile-stats .s .v{ font-family:'Space Grotesk',sans-serif; font-size:18px; font-weight:600; margin-top:2px;}
+  .timeline{ display:flex; flex-direction:column; gap:6px; max-height: 320px; overflow-y:auto; padding-right:4px; }
+  .timeline .t-row{
+    display:grid; grid-template-columns: 90px 1fr 70px 60px; gap:8px; align-items:center;
+    font-size:12.5px; padding:7px 10px; border-radius:6px; background: var(--panel-2);
+  }
+  .timeline .t-row.suspicious{ border:1px solid var(--red); }
+  .timeline .t-row .d{ color:var(--muted); font-family:'JetBrains Mono',monospace; }
+  .timeline .t-row .rng{ font-family:'JetBrains Mono',monospace; }
+  .timeline .t-row .dur{ text-align:right; font-family:'JetBrains Mono',monospace; font-weight:600; }
+  .timeline .t-row .flag{ font-size:10px; color: var(--red); text-align:right; }
+
+  /* ANOMALIES */
+  .anomaly-summary{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;}
+  .anomaly-pill{ background: var(--panel-2); border:1px solid var(--border); border-radius:8px; padding:10px 14px; font-size:12.5px; min-width:150px;}
+  .anomaly-pill b{ display:block; font-family:'Space Grotesk',sans-serif; font-size:19px; margin-bottom:2px; }
+  .now-list{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px;}
+  .now-tag{ background: rgba(93,214,138,0.12); border:1px solid var(--green); color:#c9f5da; padding:5px 12px; border-radius:20px; font-size:12.5px; display:flex; align-items:center; gap:6px;}
+  .anomaly-list{ display:flex; flex-direction:column; gap:5px; max-height:200px; overflow-y:auto; }
+  .anomaly-list .row{ font-size:12px; color:var(--muted); display:flex; justify-content:space-between; padding:5px 8px; border-radius:5px; }
+  .anomaly-list .row:hover{ background: var(--panel-2); }
+
+  footer{ text-align:center; color:var(--muted); font-size:11.5px; padding: 24px 0 10px; }
+  ::-webkit-scrollbar{ width:6px; height:6px; }
+  ::-webkit-scrollbar-thumb{ background:#333c4d; border-radius:4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand">
+      <div class="dot-clock"></div>
+      <div>
+        <h1>Pulso</h1>
+        <div class="sub">Dashboard de ponto — dados ao vivo da planilha</div>
+      </div>
+    </div>
+    <div class="live-status">
+      <span class="pulse"></span>
+      <span id="last-update">carregando…</span>
+      <button id="refresh-btn">Atualizar agora</button>
+    </div>
+  </header>
+
+  <div id="err-banner"></div>
+
+  <div class="filters">
+    <div class="group chip-row" id="quick-range">
+      <label style="margin-right:2px;">Período</label>
+      <span class="chip" data-range="today">Hoje</span>
+      <span class="chip" data-range="week">Esta semana</span>
+      <span class="chip active" data-range="month">Este mês</span>
+      <span class="chip" data-range="lastmonth">Mês passado</span>
+      <span class="chip" data-range="all">Tudo</span>
+    </div>
+    <div class="group">
+      <label>De</label>
+      <input type="date" id="date-from">
+      <label>Até</label>
+      <input type="date" id="date-to">
+    </div>
+    <div class="group">
+      <label>Setor</label>
+      <select id="setor-filter"><option value="">Todos</option></select>
+    </div>
+    <div class="search-box">
+      <input type="text" id="search-name" placeholder="Buscar pessoa (abre análise individual)…">
+    </div>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi">
+      <div class="label">Na empresa agora</div>
+      <div class="value" id="kpi-now">—</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Pessoas ativas no período</div>
+      <div class="value" id="kpi-people">—</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Horas totais no período</div>
+      <div class="value" id="kpi-hours">—</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Duração média por visita</div>
+      <div class="value" id="kpi-avg">—</div>
+    </div>
+  </div>
+
+  <section>
+    <div class="section-head">
+      <h2>Pulso do escritório — movimento por horário</h2>
+      <div class="hint">Média de pessoas presentes em cada hora do dia, no período filtrado</div>
+    </div>
+    <div class="panel">
+      <div class="clock-wrap">
+        <svg id="clock-svg" width="300" height="300" viewBox="0 0 300 300"></svg>
+        <div class="clock-legend" id="clock-legend"></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="grid-2">
+      <div>
+        <div class="section-head">
+          <h2>Ranking — quem mais ficou na empresa</h2>
+          <div class="hint" id="rank-hint">tempo total somado no período</div>
+        </div>
+        <div class="panel">
+          <div class="rank-list" id="rank-list"></div>
+        </div>
+      </div>
+      <div>
+        <div class="section-head">
+          <h2>Setores</h2>
+          <button class="btn-link" id="manage-setores-btn">como definir setores</button>
+        </div>
+        <div class="panel">
+          <div class="setor-grid" id="setor-grid"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <h2>Análise individual</h2>
+    </div>
+    <div class="panel">
+      <div class="person-select">
+        <select id="person-select"><option value="">Selecione uma pessoa…</option></select>
+      </div>
+      <div id="profile-body"><div class="profile-empty">Escolha alguém acima para ver o histórico detalhado.</div></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <h2>Qualidade dos dados</h2>
+      <div class="hint">Cliques duplicados são detectados e ignorados automaticamente</div>
+    </div>
+    <div class="panel">
+      <div class="anomaly-summary" id="anomaly-summary"></div>
+      <div id="now-list-wrap"></div>
+      <div class="anomaly-list" id="anomaly-list"></div>
+    </div>
+  </section>
+
+  <footer>Atualiza sozinho a cada 25s a partir da planilha do Google Sheets. Se algo não carregar, confira se a planilha está compartilhada como "Qualquer pessoa com o link pode visualizar".</footer>
+</div>
+
+<div class="drawer-backdrop" id="drawer-backdrop"></div>
+<div class="drawer" id="drawer" style="display:none;">
+  <button class="drawer-close" id="drawer-close">×</button>
+  <h3>Como definir os setores</h3>
+  <div class="hint">
+    Os setores vêm de uma aba chamada <b class="mono" style="color:#EDEFF3;">Setores</b> na mesma planilha do ponto, com duas colunas: <b style="color:#EDEFF3;">Nome</b> e <b style="color:#EDEFF3;">Setor</b>.
+    Assim que você editar essa aba, o dashboard atualiza sozinho — igual acontece com o ponto.
+    <br><br>
+    Se a aba ainda não existe, crie uma nova aba na planilha com esse nome exato e essas colunas. Use os nomes abaixo (exatamente como aparecem nos registros de ponto) como ponto de partida:
+  </div>
+  <button class="btn-link" id="copy-names-btn" style="margin-bottom:14px;">copiar lista de nomes</button>
+  <div id="setor-rows"></div>
+</div>
+
+<script>
+/* ============ CONFIG ============ */
+const SHEET_ID = '1D8Nm-fg8854eiPFxpvTDdtdy_ZbmKdPwZdGOtOQSQqk';
+const GID = 0;
+const SETORES_SHEET_NAME = 'Setores';
+const REFRESH_MS = 25000;
+const SETOR_COLORS = ['#F2B84B','#3FD6C6','#8B7CF6','#5DD68A','#F2545B','#5AA9E6','#E68FD6','#C9A227'];
+
+let RAW_ROWS = [];
+let SESSIONS = [];
+let ANOMALIES = [];
+let SETOR_MAP = {};
+let loadedOnce = false;
+
+/* ============ JSONP LOADERS (Google gviz) ============ */
+window.onAttendanceData = onSheetData;
+window.onSetoresData = onSetoresData;
+
+function attendanceUrl(){
+  return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?gid=${GID}&headers=1&tqx=out:json;responseHandler:onAttendanceData&_=${Date.now()}`;
+}
+function setoresUrl(){
+  return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${encodeURIComponent(SETORES_SHEET_NAME)}&headers=1&tqx=out:json;responseHandler:onSetoresData&_=${Date.now()}`;
+}
+function injectScript(id, src, onerror){
+  const old = document.getElementById(id);
+  if(old) old.remove();
+  const script = document.createElement('script');
+  script.id = id;
+  script.src = src;
+  if(onerror) script.onerror = onerror;
+  document.body.appendChild(script);
+}
+function loadSheet(){
+  injectScript('gviz-attendance', attendanceUrl(), () => {
+    showError('Não foi possível carregar a planilha. Confira se ela está compartilhada como "Qualquer pessoa com o link pode visualizar", ou tente atualizar novamente.');
+  });
+  injectScript('gviz-setores', setoresUrl(), () => { /* aba de Setores é opcional */ });
+}
+function showError(msg){
+  const b = document.getElementById('err-banner');
+  b.style.display = 'block';
+  b.textContent = msg;
+}
+function clearError(){ document.getElementById('err-banner').style.display = 'none'; }
+
+/* ============ PARSING ============ */
+function cellStr(c){ if(!c) return ''; return c.v==null ? '' : String(c.v); }
+
+function normalizeTipo(raw){
+  const t = raw.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  if(t.includes('cheg')) return 'Chegada';
+  if(t.includes('sai')) return 'Saida';
+  return null;
+}
+
+function cellDate(c){
+  if(!c || c.v==null) return null;
+  const v = c.v;
+  if(typeof v === 'string'){
+    let m = v.match(/^Date\((\d+),(\d+),(\d+)/);
+    if(m) return { y:+m[1], mo:+m[2], d:+m[3] };
+    m = v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if(m) return { y:+m[3], mo:+m[2]-1, d:+m[1] };
+  }
+  return null;
+}
+function cellTime(c){
+  if(!c || c.v==null) return {h:0,m:0,s:0};
+  const v = c.v;
+  if(Array.isArray(v)) return { h:v[0]||0, m:v[1]||0, s:v[2]||0 };
+  if(typeof v === 'string'){
+    const m = v.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+    if(m) return { h:+m[1], m:+m[2], s: m[3]?+m[3]:0 };
+  }
+  return {h:0,m:0,s:0};
+}
+
+function onSheetData(data){
+  try{
+    if(!data || data.status === 'error'){
+      showError('A planilha respondeu com erro. Verifique as permissões de compartilhamento.');
+      return;
+    }
+    clearError();
+    const cols = data.table.cols.map(c => (c.label||'').trim().toLowerCase());
+    const idx = {
+      nome: cols.findIndex(c=>c.includes('nome')),
+      tipo: cols.findIndex(c=>c.includes('tipo')),
+      data: cols.findIndex(c=>c.includes('data')),
+      hora: cols.findIndex(c=>c.includes('hora')),
+    };
+    if(idx.nome<0) idx.nome = 0;
+    if(idx.tipo<0) idx.tipo = 1;
+    if(idx.data<0) idx.data = 2;
+    if(idx.hora<0) idx.hora = 3;
+
+    const rows = [];
+    for(const r of data.table.rows){
+      if(!r || !r.c) continue;
+      const nomeRaw = cellStr(r.c[idx.nome]).trim();
+      const tipoRaw = cellStr(r.c[idx.tipo]).trim();
+      if(!nomeRaw || !tipoRaw) continue;
+      const tipo = normalizeTipo(tipoRaw);
+      if(!tipo) continue;
+      const dp = cellDate(r.c[idx.data]);
+      if(!dp) continue;
+      const tp = cellTime(r.c[idx.hora]);
+      const ts = new Date(dp.y, dp.mo, dp.d, tp.h, tp.m, tp.s);
+      if(isNaN(ts.getTime())) continue;
+      rows.push({ nome: nomeRaw, tipo, ts });
+    }
+    RAW_ROWS = rows;
+    buildSessions();
+    document.getElementById('last-update').textContent = 'atualizado às ' + new Date().toLocaleTimeString('pt-BR');
+    loadedOnce = true;
+    render();
+  }catch(e){
+    console.error(e);
+    showError('Erro ao processar os dados da planilha: ' + e.message);
+  }
+}
+
+function onSetoresData(data){
+  try{
+    if(!data || data.status === 'error'){ SETOR_MAP = {}; if(loadedOnce) render(); return; }
+    const cols = data.table.cols.map(c => (c.label||'').trim().toLowerCase());
+    const idxNome = cols.findIndex(c=>c.includes('nome')) >= 0 ? cols.findIndex(c=>c.includes('nome')) : 0;
+    const idxSetor = cols.findIndex(c=>c.includes('setor')) >= 0 ? cols.findIndex(c=>c.includes('setor')) : 1;
+    const map = {};
+    for(const r of data.table.rows){
+      if(!r || !r.c) continue;
+      const nome = cellStr(r.c[idxNome]).trim();
+      const setor = cellStr(r.c[idxSetor]).trim();
+      if(nome && setor) map[nome] = setor;
+    }
+    SETOR_MAP = map;
+    if(loadedOnce) render();
+  }catch(e){
+    console.error('erro ao ler aba de Setores', e);
+  }
+}
+
+/* ============ SESSION BUILDING (dedupe + pairing) ============ */
+function dateKey(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+
+function buildSessions(){
+  const byPerson = new Map();
+  for(const r of RAW_ROWS){
+    if(!byPerson.has(r.nome)) byPerson.set(r.nome, []);
+    byPerson.get(r.nome).push(r);
+  }
+  const sessions = [];
+  const anomalies = [];
+  const today = dateKey(new Date());
+
+  for(const [nome, recs] of byPerson){
+    recs.sort((a,b)=>a.ts-b.ts);
+    // collapse consecutive duplicate-type clicks (accidental double taps)
+    const collapsed = [];
+    let dupCount = 0;
+    for(const r of recs){
+      const last = collapsed[collapsed.length-1];
+      if(last && last.tipo === r.tipo){ dupCount++; continue; }
+      collapsed.push(r);
+    }
+    if(dupCount>0) anomalies.push({type:'duplicado', nome, count:dupCount});
+
+    let open = null;
+    for(const r of collapsed){
+      if(r.tipo === 'Chegada'){
+        if(open){ anomalies.push({type:'chegada_sem_saida', nome, ts: open.ts}); }
+        open = r;
+      } else { // Saida
+        if(open){
+          const durationMs = r.ts - open.ts;
+          if(durationMs > 0){
+            sessions.push({ nome, start: open.ts, end: r.ts, durationMs, suspicious: durationMs > 12*3600*1000 });
+          }
+          open = null;
+        } else {
+          anomalies.push({type:'saida_sem_chegada', nome, ts: r.ts});
+        }
+      }
+    }
+    if(open){
+      const isToday = dateKey(open.ts) === today;
+      anomalies.push({type: isToday ? 'presente_agora' : 'esqueceu_saida', nome, ts: open.ts});
+    }
+  }
+  SESSIONS = sessions;
+  ANOMALIES = anomalies;
+}
+
+/* ============ FILTER STATE ============ */
+let filterFrom = null, filterTo = null, filterSetor = '';
+function setQuickRange(key){
+  const now = new Date();
+  let from=null, to=null;
+  const startOf = (d)=>new Date(d.getFullYear(),d.getMonth(),d.getDate());
+  if(key==='today'){ from = startOf(now); to = startOf(now); }
+  else if(key==='week'){
+    const day = now.getDay(); // 0=Sun
+    const monday = new Date(now); monday.setDate(now.getDate() - ((day+6)%7));
+    from = startOf(monday); to = startOf(now);
+  } else if(key==='month'){ from = new Date(now.getFullYear(), now.getMonth(), 1); to = startOf(now); }
+  else if(key==='lastmonth'){ from = new Date(now.getFullYear(), now.getMonth()-1, 1); to = new Date(now.getFullYear(), now.getMonth(), 0); }
+  else if(key==='all'){ from=null; to=null; }
+  filterFrom = from; filterTo = to;
+  document.getElementById('date-from').value = from ? isoDate(from) : '';
+  document.getElementById('date-to').value = to ? isoDate(to) : '';
+  document.querySelectorAll('#quick-range .chip').forEach(c=>c.classList.toggle('active', c.dataset.range===key));
+}
+function isoDate(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+
+function filteredSessions(){
+  return SESSIONS.filter(s=>{
+    if(filterFrom && s.start < filterFrom) return false;
+    if(filterTo){ const end = new Date(filterTo); end.setHours(23,59,59,999); if(s.start > end) return false; }
+    if(filterSetor && (SETOR_MAP[s.nome]||'Sem setor') !== filterSetor) return false;
+    return true;
+  });
+}
+
+/* ============ AGGREGATIONS ============ */
+function aggregateByPerson(sessions){
+  const map = new Map();
+  for(const s of sessions){
+    if(!map.has(s.nome)) map.set(s.nome, { nome:s.nome, totalMs:0, count:0, days:new Set(), maxMs:0 });
+    const a = map.get(s.nome);
+    a.totalMs += s.durationMs; a.count += 1; a.days.add(dateKey(s.start)); a.maxMs = Math.max(a.maxMs, s.durationMs);
+  }
+  return Array.from(map.values()).map(a=>({...a, daysCount:a.days.size, avgMs:a.totalMs/a.count}));
+}
+
+function fmtDuration(ms){
+  if(ms==null || isNaN(ms)) return '—';
+  const totalMin = Math.round(ms/60000);
+  const h = Math.floor(totalMin/60), m = totalMin%60;
+  return h>0 ? `${h}h ${String(m).padStart(2,'0')}m` : `${m}m`;
+}
+function fmtHoursShort(ms){
+  const h = ms/3600000;
+  return h.toFixed(1).replace('.0','');
+}
+
+function hourlyPresence(sessions){
+  const perDay = {};
+  for(const s of sessions){
+    const dk = dateKey(s.start);
+    if(!perDay[dk]) perDay[dk] = Array(24).fill(0);
+    const startH = s.start.getHours() + s.start.getMinutes()/60;
+    const endSameDay = (dateKey(s.end)===dk);
+    const endH = endSameDay ? (s.end.getHours() + s.end.getMinutes()/60) : 24;
+    for(let h=0;h<24;h++){ if(startH < h+1 && endH > h) perDay[dk][h] += 1; }
+  }
+  const days = Object.keys(perDay);
+  const avg = Array(24).fill(0);
+  days.forEach(dk => { for(let h=0;h<24;h++) avg[h] += perDay[dk][h]; });
+  for(let h=0;h<24;h++) avg[h] = days.length ? avg[h]/days.length : 0;
+  return avg;
+}
+
+/* ============ RENDER: CLOCK ============ */
+function renderClock(sessions){
+  const avg = hourlyPresence(sessions);
+  const max = Math.max(...avg, 0.01);
+  const svg = document.getElementById('clock-svg');
+  const cx=150, cy=150, rBase=42, rMax=118;
+  let html = '';
+  // base circle + hour ticks
+  html += `<circle cx="${cx}" cy="${cy}" r="${rBase}" fill="none" stroke="#262E3D" stroke-width="1"/>`;
+  html += `<circle cx="${cx}" cy="${cy}" r="${rMax}" fill="none" stroke="#1C2230" stroke-width="1"/>`;
+  for(let h=0; h<24; h++){
+    const angle = (h/24)*2*Math.PI - Math.PI/2;
+    const val = avg[h];
+    const r = rBase + (rMax-rBase) * (val/max);
+    const x1 = cx + Math.cos(angle)*rBase, y1 = cy + Math.sin(angle)*rBase;
+    const x2 = cx + Math.cos(angle)*r, y2 = cy + Math.sin(angle)*r;
+    const isPeak = val === max && max > 0;
+    html += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${isPeak?'#F2B84B':'#3FD6C6'}" stroke-width="6" stroke-linecap="round" opacity="${val>0?0.92:0.15}"/>`;
+    if(h%3===0){
+      const lx = cx + Math.cos(angle)*(rMax+16), ly = cy + Math.sin(angle)*(rMax+16);
+      html += `<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" fill="#8891A3" font-size="10.5" font-family="JetBrains Mono, monospace" text-anchor="middle" dominant-baseline="middle">${String(h).padStart(2,'0')}h</text>`;
+    }
+  }
+  html += `<text x="${cx}" y="${cy-6}" fill="#EDEFF3" font-size="12" font-family="Inter, sans-serif" text-anchor="middle">pico</text>`;
+  const peakH = avg.indexOf(max);
+  html += `<text x="${cx}" y="${cy+14}" fill="#F2B84B" font-size="17" font-weight="600" font-family="Space Grotesk, sans-serif" text-anchor="middle">${max>0? String(peakH).padStart(2,'0')+'h' : '—'}</text>`;
+  svg.innerHTML = html;
+
+  // legend
+  const sorted = avg.map((v,h)=>({h,v})).filter(x=>x.v>0).sort((a,b)=>b.v-a.v);
+  const busiest = sorted.slice(0,3);
+  const quietest = avg.map((v,h)=>({h,v})).filter(x=>x.v>0).sort((a,b)=>a.v-b.v).slice(0,3);
+  let leg = '<div style="color:#EDEFF3;font-weight:600;margin-bottom:2px;">Horários mais cheios</div>';
+  busiest.forEach(x=> leg += `<div class="row"><span>${String(x.h).padStart(2,'0')}h–${String(x.h+1).padStart(2,'0')}h</span><b>~${x.v.toFixed(1)} pessoas</b></div>`);
+  leg += '<div style="color:#EDEFF3;font-weight:600;margin:10px 0 2px;">Horários mais vazios</div>';
+  quietest.forEach(x=> leg += `<div class="row"><span>${String(x.h).padStart(2,'0')}h–${String(x.h+1).padStart(2,'0')}h</span><b>~${x.v.toFixed(1)} pessoas</b></div>`);
+  document.getElementById('clock-legend').innerHTML = leg || '<span>sem dados no período</span>';
+}
+
+/* ============ RENDER: KPIs ============ */
+function renderKpis(sessions){
+  const people = aggregateByPerson(sessions);
+  const totalMs = sessions.reduce((a,s)=>a+s.durationMs,0);
+  const avgMs = sessions.length ? totalMs/sessions.length : 0;
+  document.getElementById('kpi-people').textContent = people.length;
+  document.getElementById('kpi-hours').innerHTML = fmtHoursShort(totalMs) + '<span class="unit">h</span>';
+  document.getElementById('kpi-avg').innerHTML = fmtDuration(avgMs);
+
+  const nowPresent = ANOMALIES.filter(a=>a.type==='presente_agora');
+  const kpiNow = document.getElementById('kpi-now');
+  kpiNow.innerHTML = nowPresent.length;
+  kpiNow.className = 'value ' + (nowPresent.length ? '' : '');
+}
+
+/* ============ RENDER: RANKING ============ */
+function renderRanking(sessions){
+  const people = aggregateByPerson(sessions).sort((a,b)=>b.totalMs-a.totalMs);
+  const list = document.getElementById('rank-list');
+  if(!people.length){ list.innerHTML = '<div class="profile-empty">Sem sessões completas no período selecionado.</div>'; return; }
+  const max = people[0].totalMs;
+  list.innerHTML = people.slice(0,15).map((p,i)=>{
+    const setor = SETOR_MAP[p.nome] || 'Sem setor';
+    const pct = Math.max(4, (p.totalMs/max)*100);
+    return `<div class="rank-item" data-person="${escAttr(p.nome)}">
+      <div class="pos">${i+1}</div>
+      <div class="name-bar">
+        <div class="nm"><span>${escHtml(p.nome)}<span class="setor-tag">${escHtml(setor)}</span></span></div>
+        <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
+      </div>
+      <div class="time-val">${fmtDuration(p.totalMs)}</div>
+    </div>`;
+  }).join('');
+  list.querySelectorAll('.rank-item').forEach(el=>{
+    el.addEventListener('click', ()=> selectPerson(el.dataset.person));
+  });
+}
+
+/* ============ RENDER: SETORES ============ */
+function renderSetores(sessions){
+  const people = aggregateByPerson(sessions);
+  const bySetor = new Map();
+  for(const p of people){
+    const s = SETOR_MAP[p.nome] || 'Sem setor';
+    if(!bySetor.has(s)) bySetor.set(s, { setor:s, totalMs:0, pessoas:0 });
+    const o = bySetor.get(s);
+    o.totalMs += p.totalMs; o.pessoas += 1;
+  }
+  const arr = Array.from(bySetor.values()).sort((a,b)=>b.totalMs-a.totalMs);
+  const grid = document.getElementById('setor-grid');
+  if(!arr.length){ grid.innerHTML = '<div class="profile-empty">Sem dados no período.</div>'; return; }
+  grid.innerHTML = arr.map((s,i)=>`
+    <div class="setor-card">
+      <div class="nm"><span class="swatch" style="background:${SETOR_COLORS[i%SETOR_COLORS.length]}"></span>${escHtml(s.setor)}</div>
+      <div class="row"><span>Tempo total</span><b>${fmtDuration(s.totalMs)}</b></div>
+      <div class="row"><span>Pessoas</span><b>${s.pessoas}</b></div>
+      <div class="row"><span>Média/pessoa</span><b>${fmtDuration(s.totalMs/s.pessoas)}</b></div>
+    </div>`).join('');
+}
+
+/* ============ RENDER: SETOR FILTER + PERSON SELECT OPTIONS ============ */
+function renderSelectors(){
+  const allNames = Array.from(new Set(RAW_ROWS.map(r=>r.nome))).sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  const setorSel = document.getElementById('setor-filter');
+  const setores = Array.from(new Set(allNames.map(n=>SETOR_MAP[n]||'Sem setor'))).sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  const curSetor = setorSel.value;
+  setorSel.innerHTML = '<option value="">Todos</option>' + setores.map(s=>`<option value="${escAttr(s)}">${escHtml(s)}</option>`).join('');
+  setorSel.value = curSetor;
+
+  const personSel = document.getElementById('person-select');
+  const curPerson = personSel.value;
+  personSel.innerHTML = '<option value="">Selecione uma pessoa…</option>' + allNames.map(n=>`<option value="${escAttr(n)}">${escHtml(n)}</option>`).join('');
+  personSel.value = curPerson;
+}
+
+/* ============ RENDER: PROFILE (individual) ============ */
+let currentPerson = '';
+function selectPerson(nome){
+  currentPerson = nome;
+  document.getElementById('person-select').value = nome;
+  renderProfile();
+}
+function renderProfile(){
+  const body = document.getElementById('profile-body');
+  if(!currentPerson){ body.innerHTML = '<div class="profile-empty">Escolha alguém acima para ver o histórico detalhado.</div>'; return; }
+  const personSessions = filteredSessions().filter(s=>s.nome===currentPerson).sort((a,b)=>b.start-a.start);
+  const agg = aggregateByPerson(personSessions)[0];
+  const setor = SETOR_MAP[currentPerson] || 'Sem setor';
+
+  if(!agg){
+    body.innerHTML = `<div class="profile-empty">${escHtml(currentPerson)} não tem sessões completas no período selecionado.</div>`;
+    return;
+  }
+  let html = `<div class="profile-stats">
+    <div class="s"><div class="l">Setor</div><div class="v" style="font-size:14px;">${escHtml(setor)}</div></div>
+    <div class="s"><div class="l">Tempo total</div><div class="v">${fmtDuration(agg.totalMs)}</div></div>
+    <div class="s"><div class="l">Dias presente</div><div class="v">${agg.daysCount}</div></div>
+    <div class="s"><div class="l">Média por visita</div><div class="v" style="font-size:14px;">${fmtDuration(agg.avgMs)}</div></div>
+  </div>
+  <div class="timeline">`;
+  html += personSessions.map(s=>{
+    const d = s.start.toLocaleDateString('pt-BR');
+    const t1 = s.start.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    const t2 = s.end.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    return `<div class="t-row ${s.suspicious?'suspicious':''}">
+      <div class="d">${d}</div>
+      <div class="rng">${t1} → ${t2}</div>
+      <div class="dur">${fmtDuration(s.durationMs)}</div>
+      <div class="flag">${s.suspicious?'checar':''}</div>
+    </div>`;
+  }).join('');
+  html += '</div>';
+  body.innerHTML = html;
+}
+
+/* ============ RENDER: ANOMALIES ============ */
+function renderAnomalies(){
+  const dupTotal = ANOMALIES.filter(a=>a.type==='duplicado').reduce((s,a)=>s+a.count,0);
+  const semChegada = ANOMALIES.filter(a=>a.type==='saida_sem_chegada').length;
+  const semSaida = ANOMALIES.filter(a=>a.type==='esqueceu_saida').length;
+  const presentes = ANOMALIES.filter(a=>a.type==='presente_agora');
+
+  document.getElementById('anomaly-summary').innerHTML = `
+    <div class="anomaly-pill"><b>${dupTotal}</b>cliques duplicados ignorados</div>
+    <div class="anomaly-pill"><b>${semChegada}</b>saídas sem chegada correspondente</div>
+    <div class="anomaly-pill"><b>${semSaida}</b>chegadas sem saída registrada (dias passados)</div>
+    <div class="anomaly-pill"><b>${presentes.length}</b>pessoas na empresa agora</div>
+  `;
+
+  const nowWrap = document.getElementById('now-list-wrap');
+  if(presentes.length){
+    nowWrap.innerHTML = '<div class="now-list">' + presentes.map(p=>{
+      const t = p.ts.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+      return `<span class="now-tag"><span class="pulse" style="background:#5DD68A;"></span>${escHtml(p.nome)} · desde ${t}</span>`;
+    }).join('') + '</div>';
+  } else { nowWrap.innerHTML = ''; }
+
+  const list = ANOMALIES.filter(a=>a.type==='saida_sem_chegada'||a.type==='esqueceu_saida').sort((a,b)=>b.ts-a.ts).slice(0,40);
+  document.getElementById('anomaly-list').innerHTML = list.map(a=>{
+    const label = a.type==='saida_sem_chegada' ? 'saída sem chegada' : 'esqueceu de bater a saída';
+    return `<div class="row"><span>${escHtml(a.nome)} — ${label}</span><span>${a.ts.toLocaleString('pt-BR')}</span></div>`;
+  }).join('') || '<div class="row">Nenhuma pendência além dos cliques duplicados.</div>';
+}
+
+/* ============ SETOR DRAWER (somente leitura + ajuda) ============ */
+function openDrawer(){
+  const allNames = Array.from(new Set(RAW_ROWS.map(r=>r.nome))).sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  const rows = document.getElementById('setor-rows');
+  rows.innerHTML = allNames.map(n=>`
+    <div class="setor-row">
+      <span class="who">${escHtml(n)}</span>
+      <span class="setor-input" style="background:transparent;border:none;color:${SETOR_MAP[n]?'#EDEFF3':'#8891A3'};text-align:right;">${escHtml(SETOR_MAP[n] || 'sem setor')}</span>
+    </div>`).join('');
+  document.getElementById('copy-names-btn').onclick = ()=>{
+    const text = allNames.join('\n');
+    navigator.clipboard.writeText(text).then(()=>{
+      const btn = document.getElementById('copy-names-btn');
+      const old = btn.textContent; btn.textContent = 'copiado!';
+      setTimeout(()=>btn.textContent = old, 1500);
+    });
+  };
+  document.getElementById('drawer').style.display = 'block';
+  document.getElementById('drawer-backdrop').style.display = 'block';
+}
+function closeDrawer(){
+  document.getElementById('drawer').style.display = 'none';
+  document.getElementById('drawer-backdrop').style.display = 'none';
+}
+
+/* ============ HELPERS ============ */
+function escHtml(s){ return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function escAttr(s){ return escHtml(s); }
+
+/* ============ MASTER RENDER ============ */
+function render(){
+  const sessions = filteredSessions();
+  renderKpis(sessions);
+  renderClock(sessions);
+  renderRanking(sessions);
+  renderSetores(sessions);
+  renderSelectors();
+  renderProfile();
+  renderAnomalies();
+}
+
+/* ============ EVENTS ============ */
+document.querySelectorAll('#quick-range .chip').forEach(chip=>{
+  chip.addEventListener('click', ()=>{ setQuickRange(chip.dataset.range); render(); });
+});
+document.getElementById('date-from').addEventListener('change', (e)=>{
+  filterFrom = e.target.value ? new Date(e.target.value+'T00:00:00') : null;
+  document.querySelectorAll('#quick-range .chip').forEach(c=>c.classList.remove('active'));
+  render();
+});
+document.getElementById('date-to').addEventListener('change', (e)=>{
+  filterTo = e.target.value ? new Date(e.target.value+'T00:00:00') : null;
+  document.querySelectorAll('#quick-range .chip').forEach(c=>c.classList.remove('active'));
+  render();
+});
+document.getElementById('setor-filter').addEventListener('change', (e)=>{ filterSetor = e.target.value; render(); });
+document.getElementById('person-select').addEventListener('change', (e)=>{ currentPerson = e.target.value; renderProfile(); });
+document.getElementById('search-name').addEventListener('input', (e)=>{
+  const q = e.target.value.trim().toLowerCase();
+  if(!q) return;
+  const names = Array.from(new Set(RAW_ROWS.map(r=>r.nome)));
+  const match = names.find(n=>n.toLowerCase().includes(q));
+  if(match){ currentPerson = match; document.getElementById('person-select').value = match; renderProfile(); }
+});
+document.getElementById('refresh-btn').addEventListener('click', loadSheet);
+document.getElementById('manage-setores-btn').addEventListener('click', openDrawer);
+document.getElementById('drawer-close').addEventListener('click', closeDrawer);
+document.getElementById('drawer-backdrop').addEventListener('click', closeDrawer);
+
+/* ============ INIT ============ */
+setQuickRange('month');
+loadSheet();
+setInterval(loadSheet, REFRESH_MS);
+</script>
+</body>
+</html>
